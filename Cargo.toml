@@ -1,0 +1,27 @@
+[package]
+name = "unsafety_hook"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[dependencies]
+bitflags = "2.13.0"
+lde = "0.3"
+
+[dependencies.windows-sys]
+version = "^0.61"
+features = [
+    "Win32_System_Memory", 
+    "Win32_System_Diagnostics_Debug", 
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Threading"
+]
