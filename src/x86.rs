@@ -4,85 +4,28 @@ use std::{
     ptr::{self, null_mut},
     sync::{Mutex, OnceLock},
 };
-use windows_sys::{
-    Win32::{
-        Foundation::{CloseHandle, FALSE, GetLastError, HANDLE, INVALID_HANDLE_VALUE},
-        System::{
-            Diagnostics::{
-                Debug::{CONTEXT_CONTROL_X86, FlushInstructionCache},
-                ToolHelp::{
-                    CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First,
-                    Thread32Next,
-                },
-            },
-            Memory::{
-                MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READWRITE, VirtualAlloc,
-                VirtualFree, VirtualProtect,
-            },
-            Threading::{
-                GetCurrentProcess, GetCurrentProcessId, GetCurrentThreadId, OpenThread,
-                ResumeThread, SuspendThread, THREAD_GET_CONTEXT, THREAD_SET_CONTEXT,
-                THREAD_SUSPEND_RESUME,
+use windows_sys::Win32::{
+    Foundation::{CloseHandle, FALSE, GetLastError, HANDLE, INVALID_HANDLE_VALUE},
+    System::{
+        Diagnostics::{
+            Debug::{CONTEXT_CONTROL_X86, FlushInstructionCache},
+            ToolHelp::{
+                CreateToolhelp32Snapshot, TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First,
+                Thread32Next,
             },
         },
+        Memory::{
+            MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READWRITE, VirtualAlloc,
+            VirtualFree, VirtualProtect,
+        },
+        Threading::{
+            GetCurrentProcess, GetCurrentProcessId, GetCurrentThreadId, OpenThread, ResumeThread,
+            SuspendThread, THREAD_GET_CONTEXT, THREAD_SET_CONTEXT, THREAD_SUSPEND_RESUME,
+        },
     },
-    core::BOOL,
 };
 
-#[repr(C)]
-#[derive(Clone, Copy)]
-#[allow(non_snake_case, non_camel_case_types)]
-pub struct FLOATING_SAVE_AREA {
-    pub ControlWord: u32,
-    pub StatusWord: u32,
-    pub TagWord: u32,
-    pub ErrorOffset: u32,
-    pub ErrorSelector: u32,
-    pub DataOffset: u32,
-    pub DataSelector: u32,
-    pub RegisterArea: [u8; 80],
-    pub Cr0NpxState: u32,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-#[allow(non_snake_case, non_camel_case_types)]
-pub struct CONTEXT_X86 {
-    pub ContextFlags: u32,
-    pub Dr0: u32,
-    pub Dr1: u32,
-    pub Dr2: u32,
-    pub Dr3: u32,
-    pub Dr6: u32,
-    pub Dr7: u32,
-    pub FloatSave: FLOATING_SAVE_AREA,
-    pub SegGs: u32,
-    pub SegFs: u32,
-    pub SegEs: u32,
-    pub SegDs: u32,
-    pub Edi: u32,
-    pub Esi: u32,
-    pub Ebx: u32,
-    pub Edx: u32,
-    pub Ecx: u32,
-    pub Eax: u32,
-    pub Ebp: u32,
-    pub Eip: u32,
-    pub SegCs: u32,
-    pub EFlags: u32,
-    pub Esp: u32,
-    pub SegSs: u32,
-    pub ExtendedRegisters: [u8; 512], // MAXIMUM_SUPPORTED_EXTENSION
-}
-
-#[allow(non_upper_case_globals)]
-pub const CONTEXT_i386: u32 = 0x00010000;
-pub const CONTEXT_CONTROL: u32 = CONTEXT_i386 | 0x00000001; // Ebp, Eip, SegCs, EFlags, Esp, SegSs
-
-#[link(name = "kernel32")]
-unsafe extern "system" {
-    fn GetThreadContext(hThread: HANDLE, lpContext: *mut CONTEXT_X86) -> BOOL;
-}
+use crate::kernel;
 
 static HOOKS: OnceLock<Mutex<Vec<HookDetails>>> = OnceLock::new();
 
@@ -289,9 +232,9 @@ impl SuspendThreads {
     fn any_thread_in_range(&self, start: usize, end: usize) -> bool {
         for &handle in &self.handles {
             unsafe {
-                let mut ctx: CONTEXT_X86 = std::mem::zeroed();
+                let mut ctx: kernel::CONTEXT_X86 = std::mem::zeroed();
                 ctx.ContextFlags = CONTEXT_CONTROL_X86;
-                if GetThreadContext(handle, &mut ctx) != FALSE {
+                if kernel::GetThreadContext(handle, &mut ctx) != FALSE {
                     let eip = ctx.Eip as usize;
                     if eip >= start && eip < end {
                         return true;

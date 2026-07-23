@@ -28,6 +28,8 @@ where it handles all runtime code patching.
   prologue into the trampoline), keeping the dependency surface small.
 - Hand-rolled `CONTEXT_X86` / `FLOATING_SAVE_AREA` layout for precise control over
   thread context on `i686` targets.
+- Memory utilities — safe/unsafe read/write with automatic protection lifting, and
+  a pattern scanner for locating functions across module versions without hardcoded addresses
 
 ## Platform
 
@@ -81,3 +83,7 @@ suspension failures.
 rustup target add i686-pc-windows-msvc
 cargo build --release --target i686-pc-windows-msvc
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
